@@ -8,11 +8,11 @@ ENV UV_COMPILE_BYTECODE=1
 
 # Copy your configuration and sync project dependencies
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen --no-dev --no-install-project
 
 # Copy application source code
 COPY src/ ./src
 
 # Expose port and start production ASGI server
 EXPOSE 8000
-CMD ["uv", "run", "uvicorn", "bookmark_manager.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "uvicorn", "src.bookmark_manager.main:app", "--host", "0.0.0.0", "--port", "8000"]
