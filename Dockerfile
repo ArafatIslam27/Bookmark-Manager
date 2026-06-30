@@ -15,4 +15,4 @@ COPY src/ ./src
 
 # Expose port and start production ASGI server
 EXPOSE 8000
-CMD ["uv", "run", "uvicorn", "src.bookmark_manager.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "uvicorn", "bookmark_manager.main:app", "--host", "0.0.0.0", "--port", "8000"]
