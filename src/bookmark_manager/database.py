@@ -1,10 +1,16 @@
+import os
 from collections.abc import Generator
 from sqlmodel import Session, create_engine, SQLModel
 
-sqlite_url = "sqlite:///./bookmarks.db"
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./bookmarks.db")
 
-# echo=True allows you to see the auto-generated SQL in your console for debugging
-engine = create_engine(sqlite_url, echo=True)
+engine_kwargs = (
+    {"connect_args": {"check_same_thread": False}}
+    if DATABASE_URL.startswith("sqlite")
+    else {}
+)
+
+engine = create_engine(DATABASE_URL, **engine_kwargs)
 
 def init_db() -> None:
     """Creates the database and tables if they don't exist."""

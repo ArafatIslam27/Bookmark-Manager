@@ -1,20 +1,134 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 from bookmark_manager.api.routes import router
 from bookmark_manager.database import init_db
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Everything here runs BEFORE the server starts accepting requests
     init_db()
     yield
-    # Everything here runs AFTER the server shuts down
 
-app = FastAPI(title="Modern Bookmark API", lifespan=lifespan)
 
-# Register our routes
+app = FastAPI(title="Production Bookmark Service", lifespan=lifespan)
 app.include_router(router)
 
-@app.get("/")
-async def root():
-    return {"status": "healthy", "service": "Bookmark Manager"}
+# Beautiful UI served seamlessly out of your Python core engine
+FRONTEND_HTML = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cloud Bookmark Core</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen flex flex-col justify-center items-center p-6">
+    <div class="w-full max-w-md bg-slate-800 p-8 rounded-2xl shadow-xl border border-slate-700">
+        <h1 class="text-2xl font-bold text-center mb-6 text-emerald-400">🔖 Saved Bookmarks</h1>
+        
+        <div id="auth-box">
+            <input id="email" type="email" placeholder="Email Address" class="w-full p-3 mb-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-emerald-500">
+            <input id="password" type="password" placeholder="Password" class="w-full p-3 mb-4 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-emerald-500">
+            <div class="flex gap-2">
+                <button onclick="authAction('/auth/login')" class="flex-1 bg-emerald-600 hover:bg-emerald-500 p-3 rounded-lg font-semibold transition">Log In</button>
+                <button onclick="authAction('/auth/register')" class="flex-1 bg-slate-700 hover:bg-slate-600 p-3 rounded-lg font-semibold transition">Register</button>
+            </div>
+        </div>
+
+        <div id="dash-box" class="hidden">
+            <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-3">
+                <span id="user-display" class="text-sm text-slate-400"></span>
+                <button onclick="logout()" class="text-xs bg-rose-900 hover:bg-rose-800 px-3 py-1 rounded text-rose-200 transition">Sign Out</button>
+            </div>
+            <div class="mb-6">
+                <input id="title" type="text" placeholder="Site Name" class="w-full p-3 mb-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-emerald-500">
+                <input id="url" type="url" placeholder="https://example.com" class="w-full p-3 mb-3 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-emerald-500">
+                <button onclick="saveBookmark()" class="w-full bg-emerald-600 hover:bg-emerald-500 p-3 rounded-lg font-semibold transition">Add Saved Link</button>
+            </div>
+            <ul id="bookmark-list" class="space-y-2 max-h-60 overflow-y-auto pr-1"></ul>
+        </div>
+    </div>
+
+    <script>
+        const tokenKey = "bookmark_jwt_token";
+        
+        function checkState() {
+            const token = localStorage.getItem(tokenKey);
+            document.getElementById("auth-box").classList.toggle("hidden", !!token);
+            document.getElementById("dash-box").classList.toggle("hidden", !token);
+            if (token) { fetchBookmarks(); }
+        }
+
+        async function authAction(endpoint) {
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+            
+            if (endpoint.includes("register")) {
+                const res = await fetch(endpoint, {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({email, password})
+                });
+                const data = await res.json();
+                alert(data.detail || data.message || "Registration completed!");
+            } else {
+                const form = new URLSearchParams();
+                form.append("username", email);
+                form.append("password", password);
+                
+                const res = await fetch(endpoint, { method: "POST", body: form });
+                const data = await res.json();
+                if (data.access_token) {
+                    localStorage.setItem(tokenKey, data.access_token);
+                    checkState();
+                } else { alert(data.detail || "Authentication sequence failed."); }
+            }
+        }
+
+        async function fetchBookmarks() {
+            const token = localStorage.getItem(tokenKey);
+            const res = await fetch("/bookmarks/", {
+                headers: {"Authorization": `Bearer ${token}`}
+            });
+            if (res.status === 401) return logout();
+            const list = await res.json();
+            const container = document.getElementById("bookmark-list");
+            container.innerHTML = list.map(b => `
+                <li class="p-3 bg-slate-900 border border-slate-700 rounded-lg flex justify-between items-center">
+                    <span class="font-medium text-emerald-300">${b.title}</span>
+                    <a href="${b.url}" target="_blank" class="text-xs text-blue-400 hover:underline">Visit URL &rarr;</a>
+                </li>
+            `).join("");
+        }
+
+        async function saveBookmark() {
+            const title = document.getElementById("title").value;
+            const url = document.getElementById("url").value;
+            const token = localStorage.getItem(tokenKey);
+            
+            await fetch("/bookmarks/", {
+                method: "POST",
+                headers: {"Content-Type": "application/json", "Authorization": `Bearer ${token}`},
+                body: JSON.stringify({title, url})
+            });
+            document.getElementById("title").value = "";
+            document.getElementById("url").value = "";
+            fetchBookmarks();
+        }
+
+        function logout() {
+            localStorage.removeItem(tokenKey);
+            checkState();
+        }
+
+        window.onload = checkState;
+    </script>
+</body>
+</html>
+"""
+
+
+@app.get("/", response_class=HTMLResponse)
+async def index_portal():
+    return FRONTEND_HTML
