@@ -15,13 +15,13 @@ FastAPI · SQLModel · PyJWT · bcrypt · SQLite · uv · Docker
 
 ## Setup
 
-\`\`\`bash
+```bash
 git clone https://github.com/ArafatIslam27/Bookmark-Manager.git
 cd Bookmark-Manager
 uv sync
 $env:SECRET_KEY="your-random-secret-here"   # PowerShell
 uv run uvicorn bookmark_manager.main:app --reload
-\`\`\`
+```
 
 Visit http://localhost:8000
 
@@ -39,6 +39,6 @@ Visit http://localhost:8000
 
 ## Running tests
 
-\`\`\`bash
+```bash
 uv run pytest -v
-\`\`\`
+```
