@@ -124,3 +124,36 @@ async def list_bookmarks(
     return session.exec(
         select(Bookmark).where(Bookmark.user_id == user.id)
     ).all()
+
+
+@router.patch("/bookmarks/{bookmark_id}", response_model=Bookmark)
+async def update_bookmark(
+    bookmark_id: int,
+    data: BookmarkCreate,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    bookmark = session.get(Bookmark, bookmark_id)
+    if not bookmark or bookmark.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Bookmark not found")
+
+    bookmark.title = data.title
+    bookmark.url = data.url
+    session.add(bookmark)
+    session.commit()
+    session.refresh(bookmark)
+    return bookmark
+
+
+@router.delete("/bookmarks/{bookmark_id}", status_code=204)
+async def delete_bookmark(
+    bookmark_id: int,
+    session: Session = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    bookmark = session.get(Bookmark, bookmark_id)
+    if not bookmark or bookmark.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Bookmark not found")
+
+    session.delete(bookmark)
+    session.commit()
