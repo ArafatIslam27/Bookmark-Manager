@@ -2,6 +2,7 @@ import os
 from datetime import datetime, timedelta, timezone
 import bcrypt
 import jwt
+import secrets
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlmodel import Session, select
@@ -10,10 +11,14 @@ from bookmark_manager.models import Bookmark, BookmarkCreate, User, UserCreate
 
 router = APIRouter(tags=["Application Gateway"])
 
-# Fallback string for development; read a cryptographically random block in production
-SECRET_KEY = os.getenv(
-    "SECRET_KEY", "prod-security-string-change-via-environment-variables"
-)
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    SECRET_KEY = secrets.token_hex(32)
+    print(
+        "WARNING: SECRET_KEY not set. Using a temporary key for this session only — "
+        "all tokens will be invalidated when the app restarts. "
+        "Set the SECRET_KEY environment variable before deploying."
+    )
 ALGORITHM = "HS256"
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
